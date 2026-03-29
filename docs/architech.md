@@ -43,6 +43,21 @@ flowchart TD
 หลายคนอาจเคยได้ยินว่า **"Goroutine พื้นฐาน ไม่จำเป็นต้องใช้ Channel ก็ได้"** ซึ่งเป็นเรื่องจริงครับ! การเลือกใช้งานโกรูทีนแบ่งได้เป็น 2 ระดับหลักๆ ดังนี้:
 
 #### 1. Basic Goroutine (Fire and Forget)
+
+```mermaid
+flowchart LR
+    Main((Main Thread)) -- "go func()" --> G1[Goroutine 1]
+    Main -- "go func()" --> G2[Goroutine 2]
+    Main -- "go func()" --> Gx[Goroutine X]
+    
+    G1 -.-> wg(wg.Done)
+    G2 -.-> wg
+    Gx -.-> wg
+    
+    wg --- WaitGroup{sync.WaitGroup}
+    WaitGroup -- "wg.Wait()" --> Main
+```
+
 - **การทำงาน:** ใช้แค่คำสั่ง `go func()` ร่วมกับ `sync.WaitGroup` โกรูทีนจะถูกสร้างเป็นเซกเมนต์ประมวลผลแบบเบา (Lightweight Thread) วิ่งไปทำงานของมันเองโดดๆ จนจบแล้วก็สลายตัวไป
 - **อะไรที่หายไป (เทียบกับ Master):** ❌ไม่มี Channel ❌ไม่มี Worker Pool
 - **Usecase ที่เหมาะสม:** งานคู่ขนานที่ไม่ซับซ้อน จำนวนไม่เยอะมาก และไม่ต้องส่งค่ากลับมาบอก Main Thread เช่น 
@@ -53,7 +68,29 @@ flowchart TD
   - 🔻 **ห้ามใช้กับงานระดับแสน/ล้าน:** ถ้าคุณรัน `go func()` วนลูป 1,000,000 ครั้ง CPU จะสร้างหมื่นแสน Thread แล้วเจอเคส Memory พุ่งจนแอปปลิว (OOM) และ Database Connection จะพังทลาย (Too many clients)
 
 #### 2. Master Concurrency (Worker Pool + Channel)
-- **การทำงาน:** เราจะล็อกเพดานจำกัดจำกัดจำนวนโกรูทีนไม่ให้บานปลาย (เช่น ฟิกซ์ไว้แค่ 50 ตัว) แล้วนำ **"Channel"** มาใช้เป็น **"สายพานลำเลียงงาน"** ให้ Worker ทั้ง 50 ตัวทะยอยดึงงานไปทำจนกว่าจะหมดสายพาน
+
+```mermaid
+flowchart LR
+    Main((Main Thread)) -- "jobs" --> Channel[(Job Channel)]
+    
+    subgraph Fixed Worker Pool
+        W1[Worker 1]
+        W2[Worker 2]
+        Wn[Worker N]
+    end
+    
+    Channel -- "pull" --> W1
+    Channel -- "pull" --> W2
+    Channel -- "pull" --> Wn
+    
+    W1 -.-> resultChan[(Result Channel)]
+    W2 -.-> resultChan
+    Wn -.-> resultChan
+    
+    resultChan -- "fan-in" --> Main
+```
+
+- **การทำงาน:** เราจะล็อกเพดานจำกัดจำกัดจำนวนโกรูทีนไม่ให้บานปลาย (เช่น ฟิกซ์ไว้แค่ 50 ตัว) แล้วนำ **"Channel"** มาใช้เป็น **"สายพานลำเลียงงาน"** ให้ Worker ทะยอยดึงงานไปทำจนกว่าจะหมดสายพาน
 - **ทำไมต้องมี Channel?:** ในระดับ Low-level โกรูทีนแต่ละตัวมีพื้นที่ Memory ของตัวเอง การจะเชื่อมโยงคุยกันหรือส่งข้อมูลข้ามกัน *อย่างปลอดภัย* โดยไม่เกิด Data Race จะต้องใช้ท่อ Channel ในการส่งของ (ตามปรัชญาสูงสุดของทีม Go: *Don't communicate by sharing memory; share memory by communicating*)
 - **Usecase ที่เหมาะสม:** งานสเกลใหญ่ประมวลผลเป็นล้านๆ Record, ระบบคิว (Job Queue), Bulk Insert หนักๆ แบบในโปรเจกต์นี้
 - **Tradeoff (ข้อดี-ข้อเสีย):** 

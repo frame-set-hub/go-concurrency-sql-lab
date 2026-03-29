@@ -6,3 +6,4 @@ This folder contains all detailed documentation for the **go-concurrency-sql-lab
 |---|---|
 | [**planning.md**](./planning.md) | The step-by-step roadmap and details for each project learning phase. |
 | [**architech.md**](./architech.md) | General system architecture, tech stack details, and database schema overview. |
+| [**sql_analytics.md**](./sql_analytics.md) | Diagram explanations for GROUP BY, HAVING, and Window Functions. |
