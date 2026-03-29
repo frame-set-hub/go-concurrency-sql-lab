@@ -98,7 +98,7 @@ wg.Wait()
 flowchart LR
     Main((Main Thread)) -- "โยนงานใส่สายพาน" --> Channel[(Job Channel)]
     
-    subgraph Worker Pool (จ้าง Goroutines ไว้แค่ N ตัว)
+    subgraph WorkerPool["Worker Pool (จ้าง Goroutines ไว้แค่ N ตัว)"]
         W1[Worker 1]
         W2[Worker 2]
         Wn[Worker N]
